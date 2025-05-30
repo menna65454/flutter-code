@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:login2/login/login.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../Challeneges/Main_Page.dart';
 import 'editprofile.dart';
 import 'history.dart';
 import 'notification.dart';
@@ -64,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         nextScreen = SubtitlePage();
         break;
       case 2:
-        nextScreen = ProfileScreen();
+        nextScreen = HomePage();
         break;
       case 3:
         nextScreen = ProfileScreen(); // تغيير الشاشة الأخيرة إذا لزم الأمر
@@ -154,7 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) =>  Notification1()),
+                                builder: (context) =>  NotificationsPage()),
                           ),
                         ),
                         _buildProfileMenuItem(
@@ -162,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           text: "History",
                           onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => History()),
+                            MaterialPageRoute(builder: (context) => HistoryPage()),
                           ),
                         ),
                         _buildProfileMenuItem(

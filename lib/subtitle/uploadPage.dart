@@ -1,3 +1,5 @@
+// ignore_for_file: sort_child_properties_last, prefer_const_constructors
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,7 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:http/http.dart' as http;
 
-import 'process.dart';
+import '../mainfeature/upload.dart';
+import 'page1.dart';
+import 'uploadprocesspage.dart';
 
 class VideoPickerPage extends StatefulWidget {
   @override
@@ -18,7 +22,6 @@ class _VideoPickerPageState extends State<VideoPickerPage> {
   String? _videoPath;
   String? _selectedLanguage;
   final List<String> _languages = ['English', 'Türkçe', 'Español'];
-
 
   @override
   void initState() {
@@ -151,90 +154,81 @@ class _VideoPickerPageState extends State<VideoPickerPage> {
 
             // ✅ زر Start
             Center(
-              child: ElevatedButton(
-                onPressed: () async {
-  if (_videoPath == null || _selectedLanguage == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Please select a video and choose a language.'),
-        backgroundColor: Colors.red,
-      ),
-    );
-    return;
-  }
+              child:
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (_videoPath == null || _selectedLanguage == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                'Please select a video and choose a language.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
 
-  var request = http.MultipartRequest(
-    'POST',
-    Uri.parse('https://a300-35-245-172-127.ngrok-free.app/generate_subtitles'),
-  );
+                      var request = http.MultipartRequest(
+                        'POST',
+                        Uri.parse(
+                            'https://1728-34-105-34-211.ngrok-free.app/generate_subtitles'),
+                      );
 
-  request.files.add(await http.MultipartFile.fromPath('file', _videoPath!));
-  request.fields['language'] = _selectedLanguage == 'English'
-      ? 'en-US'
-      : _selectedLanguage == 'Türkçe'
-          ? 'tr'
-          : 'es'; // Add more if needed
+                      request.files.add(await http.MultipartFile.fromPath(
+                          'file', _videoPath!));
+                      request.fields['language'] =
+                          _selectedLanguage == 'English'
+                              ? 'en-US'
+                              : _selectedLanguage == 'Türkçe'
+                                  ? 'tr'
+                                  : 'es'; // Add more if needed
 
-  var response = await request.send();
-final respStr = await response.stream.bytesToString();
-print('🔴 Response Code: ${response.statusCode}');
-print('🔴 Response Body: $respStr');
-  if (response.statusCode == 200) {
-    final data = jsonDecode(respStr);
-    final videoUrl = data['download_link'];
+                      var response = await request.send();
+                      final respStr = await response.stream.bytesToString();
+                      print('🔴 Response Code: ${response.statusCode}');
+                      print('🔴 Response Body: $respStr');
+                      if (response.statusCode == 200) {
+                        final data = jsonDecode(respStr);
+                        final videoUrl = data['download_link'];
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProcessedVideoPage(videoUrl: videoUrl),
-      ),
-    );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Video processing failed.:$respStr'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-},
-
-                               
-                  //{
-                  //   ScaffoldMessenger.of(context).showSnackBar(
-                  //     SnackBar(
-                  //       content:
-                  //           Text('Processing video in $_selectedLanguage...'),
-                  //       backgroundColor: Colors.green,
-                  //     ),
-                  //   );
-                  // } else {
-                  //   ScaffoldMessenger.of(context).showSnackBar(
-                  //     SnackBar(
-                  //       content: Text(
-                  //           'Please select a video and choose a language.'),
-                  //       backgroundColor: Colors.red,
-                  //     ),
-                  //   );
-                  
-                style: ElevatedButton.styleFrom(
-                  minimumSize: Size(300, 50),
-                  backgroundColor: Color(0xFF3CAB72),
-                ),
-                child: Text(
-                  'Start',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontFamily: 'Inria Serif',
-                    fontWeight: FontWeight.w500,
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ProcessedVideoPage(videoUrl: videoUrl),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Video processing failed.:$respStr'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: Size(300, 50),
+                      backgroundColor: Color(0xFF3CAB72),
+                    ),
+                    child: Text(
+                      'Start',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontFamily: 'Inria Serif',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                  
+               
             )
           ],
         ),
       ),
     );
   }
+
+ 
 }

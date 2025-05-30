@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../Challeneges/Main_Page.dart';
 import '../mainfeature/upload.dart';
 import '../subtitle/page1.dart';
 import 'history.dart';
@@ -45,7 +46,7 @@ class _PersonalinfoState extends State<Personalinfo> {
         nextScreen = SubtitlePage();
         break;
       case 2:
-        nextScreen = ProfileScreen();
+        nextScreen = HomePage();
         break;
       case 3:
         nextScreen = ProfileScreen(); // تغيير الشاشة الأخيرة إذا لزم الأمر

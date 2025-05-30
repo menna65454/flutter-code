@@ -2,15 +2,18 @@
 
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
 import 'package:video_player/video_player.dart';
 
+import '../Challeneges/Main_Page.dart';
 import '../profile/history.dart';
 import '../profile/profilescreen.dart';
-import 'upload.dart';
 import '../subtitle/page1.dart';
-
+import 'upload.dart';
 
 class VideoPickerPage extends StatefulWidget {
   @override
@@ -18,15 +21,15 @@ class VideoPickerPage extends StatefulWidget {
 }
 
 class _VideoPickerPageState extends State<VideoPickerPage> {
-      int _selectedIndex = 0;
-
+  int _selectedIndex = 0;
   VideoPlayerController? _controller;
   String? _videoPath;
+  TextEditingController _responseController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _pickVideo(); // اختيار الفيديو مباشرة عند فتح الصفحة
+    _pickVideo();
   }
 
   Future<void> _pickVideo() async {
@@ -37,26 +40,68 @@ class _VideoPickerPageState extends State<VideoPickerPage> {
 
     if (result != null && result.files.isNotEmpty) {
       final file = result.files.single;
-
-      // الحصول على المسار الفعلي للملف
       String? filePath = file.path;
 
       if (filePath != null) {
         setState(() {
           _videoPath = filePath;
-          _controller?.dispose(); // تنظيف الموارد السابقة
-          _controller = VideoPlayerController.file(
-            File(_videoPath!),
-          )..initialize().then((_) {
+          _controller?.dispose();
+          _controller = VideoPlayerController.file(File(_videoPath!))
+            ..initialize().then((_) {
               setState(() {});
-              _controller!.play(); // تشغيل الفيديو تلقائيًا بعد التحميل
+              _controller!.play();
             });
         });
+
+        await _uploadVideoToServer(filePath);
       }
     }
   }
-  void _onItemTapped(int index) {
 
+  Future<void> _uploadVideoToServer(String filePath) async {
+    var uri = Uri.parse(
+        "https://d116-35-198-234-167.ngrok-free.app/predict"); // غيّر الرابط حسب ngrok الجديد
+    var request = http.MultipartRequest('POST', uri);
+
+    final mimeType = lookupMimeType(filePath);
+    final mediaType = mimeType != null ? MediaType.parse(mimeType) : null;
+
+    var videoFile = await http.MultipartFile.fromPath(
+      'video', // تأكد من تطابق الاسم مع اسم الحقل في السيرفر
+      filePath,
+      contentType: mediaType,
+    );
+
+    request.files.add(videoFile);
+
+    try {
+      var response = await request.send();
+      if (response.statusCode == 200) {
+        var responseBody = await response.stream.bytesToString();
+        final decoded = responseBody.contains("transcript")
+            ? RegExp(r'"transcript"\s*:\s*"([^"]+)"')
+                .firstMatch(responseBody)
+                ?.group(1)
+            : responseBody;
+
+        setState(() {
+          _responseController.text = decoded ?? "Empty response";
+        });
+      } else {
+        var responseBody = await response.stream.bytesToString();
+        setState(() {
+          _responseController.text =
+              "Failed to upload. Status: ${response.statusCode}\n$responseBody";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _responseController.text = "Upload error: $e";
+      });
+    }
+  }
+
+  void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
@@ -70,10 +115,10 @@ class _VideoPickerPageState extends State<VideoPickerPage> {
         nextScreen = SubtitlePage();
         break;
       case 2:
-        nextScreen = ProfileScreen();
+        nextScreen = HomePage();
         break;
       case 3:
-        nextScreen = ProfileScreen(); // تغيير الشاشة الأخيرة إذا لزم الأمر
+        nextScreen = ProfileScreen();
         break;
       default:
         return;
@@ -85,10 +130,10 @@ class _VideoPickerPageState extends State<VideoPickerPage> {
     );
   }
 
-
   @override
   void dispose() {
     _controller?.dispose();
+    _responseController.dispose();
     super.dispose();
   }
 
@@ -97,63 +142,55 @@ class _VideoPickerPageState extends State<VideoPickerPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-              backgroundColor: Colors.white,
-leading: IconButton(
+        backgroundColor: Colors.white,
+        leading: IconButton(
           icon: Icon(Icons.arrow_back_ios, color: Colors.black, size: 30),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
         actions: [
-          Icon(
-            Icons.menu,
-            size: 50,
-            color: Color(0xFF0A4627)
-          )
-        ],),      body: SingleChildScrollView(
+          Icon(Icons.menu, size: 50, color: Color(0xFF0A4627)),
+        ],
+      ),
+      body: SingleChildScrollView(
         child: Column(
           children: [
-            SizedBox(
-              height: 50,
-            ),
+            SizedBox(height: 50),
             Center(
-             child: _controller != null && _controller!.value.isInitialized
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(30), // ✅ اجعل الأطراف دائرية
-                  child: AspectRatio(
-                    aspectRatio: _controller!.value.aspectRatio,
-                    child: VideoPlayer(_controller!),
-                  ),
-                )
-              : CircularProgressIndicator(), // مؤشر تحميل أثناء التحميل
-        ),
-            SizedBox(
-              height: 40,
+              child: _controller != null && _controller!.value.isInitialized
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: AspectRatio(
+                        aspectRatio: _controller!.value.aspectRatio,
+                        child: VideoPlayer(_controller!),
+                      ),
+                    )
+                  : CircularProgressIndicator(),
             ),
-            Container(
-                padding: EdgeInsets.all(20),
-                decoration: ShapeDecoration(
-                   color:  Color(0xFFEDEDED),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12))),
-                width: 360,
-                height: 100,
-                child: Text("")),
-            SizedBox(
-              height: 40,
+            SizedBox(height: 40),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: TextField(
+                controller: _responseController,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Server Response',
+                  hintText: 'The server response will be displayed here...',
+                ),
+              ),
             ),
+            SizedBox(height: 30),
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 1, horizontal: 20),
+                    padding: EdgeInsets.symmetric(vertical: 1, horizontal: 20),
                     decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Color(0xFF24744B),
-                        // ✅ لون الحدود
-                        width: 1, // ✅ سمك الحدود
-                      ),
+                      border: Border.all(color: Color(0xFF24744B), width: 1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -164,40 +201,20 @@ leading: IconButton(
                             color: Color(0xFF0C0C0C),
                             fontSize: 18,
                             fontFamily: 'Inria Serif',
-                            fontWeight: FontWeight.w400,
                           ),
                         ),
-                        IconButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            icon: Icon(Icons.refresh_outlined)),
+                        Icon(Icons.refresh_outlined),
                       ],
                     ),
                   ),
-                  style: ButtonStyle(),
-                  onPressed: () {
-                    // Add delete account logic here
-                    Navigator.of(context).pop(); // Dismiss the dialog
-                  },
                 ),
-                SizedBox(
-                  width: 5,
-                ),
+                SizedBox(width: 5),
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // إغلاق الـ AlertDialog
-                  },
-                  style: ButtonStyle(
-                    padding: MaterialStateProperty.all<EdgeInsets>(
-                      EdgeInsets.zero, // إزالة التباعد الداخلي لتنسيق أفضل
-                    ),
-                  ),
+                  onPressed: () => _showLogoutConfirmationDialog(context),
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 2, horizontal: 40),
+                    padding: EdgeInsets.symmetric(vertical: 2, horizontal: 40),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         colors: [
                           Color(0xFF3CAB72),
                           Color(0xFF24744B),
@@ -208,43 +225,32 @@ leading: IconButton(
                       ),
                       borderRadius: BorderRadius.circular(40),
                     ),
-                    child: Center(
-                      child: Row(
-                        children: [
-                          const Text(
-                            'Done',
-                            style: TextStyle(
-                              color: Color(0xFFFEFEFE),
-                              fontSize: 18,
-                              fontFamily: 'Inria Serif',
-                              fontWeight: FontWeight.w400,
-                            ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Done',
+                          style: TextStyle(
+                            color: Color(0xFFFEFEFE),
+                            fontSize: 18,
+                            fontFamily: 'Inria Serif',
                           ),
-                          IconButton(
-                              onPressed: () {
-                                _showLogoutConfirmationDialog(context);
-                              },
-                              icon: const Icon(color: Colors.white, Icons.check)),
-                        ],
-                      ),
+                        ),
+                        Icon(Icons.check, color: Colors.white),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
-
-            SizedBox(height: 70,)
+            SizedBox(height: 50),
           ],
-          
         ),
-        
       ),
-     bottomNavigationBar:BottomNavigationBar(
-              backgroundColor: Colors.white,
-
-        currentIndex: _selectedIndex, // تعيين العنصر المحدد
-        onTap: _onItemTapped, // استدعاء التنقل عند الضغط
-        type: BottomNavigationBarType.fixed, // تجنب إعادة ترتيب الأيقونات
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(
             icon: CircleAvatar(
@@ -269,7 +275,7 @@ leading: IconButton(
           ),
           BottomNavigationBarItem(
             icon: CircleAvatar(
-              backgroundImage: AssetImage("assets/defprofile.jpeg"), // تعديل الصورة إذا لزم الأمر
+              backgroundImage: AssetImage("assets/defprofile.jpeg"),
               radius: 30,
             ),
             label: "",
@@ -284,68 +290,54 @@ leading: IconButton(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.0), // تحديد شكل الحواف
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
           title: Text(''),
           content: Text(
             'Would you like to save this video to your history?',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.black,
               fontSize: 16,
               fontFamily: 'Inria Sans',
               fontWeight: FontWeight.w400,
-              height: 1.50,
             ),
           ),
           actions: <Widget>[
             Row(
               children: [
                 TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => Upload_Page()),
+                    );
+                  },
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 45),
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 45),
                     decoration: BoxDecoration(
                       border: Border.all(
                         color: Color(0xFF24744B),
-                        // ✅ لون الحدود
-                        width: 1, // ✅ سمك الحدود
+                        width: 1,
                       ),
                       borderRadius: BorderRadius.circular(40),
                     ),
-                    child: const Center(
-                        child: Text(
+                    child: Text(
                       'No',
                       style: TextStyle(
-                        color: Color(0xFF0C0C0C),
                         fontSize: 18,
                         fontFamily: 'Inria Serif',
-                        fontWeight: FontWeight.w400,
                       ),
-                    )),
+                    ),
                   ),
-                  style: ButtonStyle(),
-                  onPressed: () async {Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                               Upload_Page()),
-                                    );},
                 ),
                 TextButton(
                   onPressed: () {
+                    Navigator.pop(context);
                   },
-                  style: ButtonStyle(
-                    padding: MaterialStateProperty.all<EdgeInsets>(
-                      EdgeInsets.zero, // إزالة التباعد الداخلي لتنسيق أفضل
-                    ),
-                  ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 10, horizontal: 45),
+                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 45),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         colors: [
                           Color(0xFF3CAB72),
                           Color(0xFF24744B),
@@ -356,15 +348,12 @@ leading: IconButton(
                       ),
                       borderRadius: BorderRadius.circular(40),
                     ),
-                    child: const Center(
-                      child: Text(
-                        'yes',
-                        style: TextStyle(
-                          color: Color(0xFFFEFEFE),
-                          fontSize: 18,
-                          fontFamily: 'Inria Serif',
-                          fontWeight: FontWeight.w400,
-                        ),
+                    child: Text(
+                      'Yes',
+                      style: TextStyle(
+                        color: Color(0xFFFEFEFE),
+                        fontSize: 18,
+                        fontFamily: 'Inria Serif',
                       ),
                     ),
                   ),
@@ -372,8 +361,6 @@ leading: IconButton(
               ],
             ),
           ],
-          actionsAlignment:
-              MainAxisAlignment.spaceEvenly, // توزيع الأزرار بالتساوي
         );
       },
     );

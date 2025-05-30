@@ -1,114 +1,105 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flutter/material.dart';
-class Notification1 extends StatelessWidget {
+import 'package:login2/profile/editprofile.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class NotificationsPage extends StatefulWidget {
+  const NotificationsPage({Key? key}) : super(key: key);
+
+  @override
+  State<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends State<NotificationsPage> {
+  final supabase = Supabase.instance.client;
+  List<dynamic> notifications = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _fetchNotifications();
+  }
+
+  Future<void> _fetchNotifications() async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    final response = await supabase
+        .from('notifications')
+        .select()
+        .eq('user_id', userId)
+        .order('created_at', ascending: false);
+
+    setState(() {
+      notifications = response;
+      isLoading = false;
+    });
+  }
+
+  Future<void> _markAsRead(String notificationId) async {
+    await supabase
+        .from('notifications')
+        .update({'is_read': true}).eq('id', notificationId);
+    await _fetchNotifications();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: Icon(Icons.arrow_back_ios, color: Colors.black),
-        title: Text(
-          "Notification",
-          style: TextStyle(color: Colors.green[800]),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Notification'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            NotificationTile(
-              title: "Downloaded completed",
-              subtitle: "dolores ratione officiis",
-              icon: Icons.check_circle,
-              iconColor: Colors.green,
-            ),
-            SizedBox(height: 12),
-            NotificationTile(
-              title: "Error Occur",
-              subtitle: "dolores ratione officiis",
-              icon: Icons.error_outline,
-              iconColor: Colors.grey,
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 2, // آخر أيقونة مفعلة
-        selectedItemColor: Colors.green[800],
-        unselectedItemColor: Colors.grey,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book_outlined),
-            label: '',
-          ),
-          BottomNavigationBarItem(
-            icon: CircleAvatar(
-              backgroundColor: Colors.green[800],
-              child: Icon(Icons.person, color: Colors.white),
-              radius: 16,
-            ),
-            label: '',
-          ),
-        ],
-      ),
-    );
-  }
-}
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : notifications.isEmpty
+              ? const Center(child: Text(''))
+              : RefreshIndicator(
+                  onRefresh: _fetchNotifications,
+                  child: ListView.builder(
+                    itemCount: notifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = notifications[index];
+                      final title = notification['title'];
+                      final body = notification['body'];
+                      final isRead = notification['is_read'] ?? false;
 
-class NotificationTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color iconColor;
+                      // تحقق: هل هذا إشعار "أكمل ملفك الشخصي"؟
+                      final isProfilePrompt = title == 'Welcome';
 
-  const NotificationTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Color(0xFFF8F8F8),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: Colors.black),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-        ],
-      ),
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 16),
+                        child: ListTile(
+                          leading: Icon(
+                            isRead
+                                ? Icons.notifications
+                                : Icons.notifications_active,
+                            color: isRead ? Colors.grey : Colors.green,
+                          ),
+                          title: Text(title),
+                          subtitle: Text(body),
+                          trailing: isProfilePrompt
+                              ? IconButton(
+                                  icon: Icon(Icons.edit, color: Colors.teal),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) => Personalinfo()),
+                                    );
+                                  },
+                                )
+                              : null,
+                        ),
+                      );
+                    },
+                  )),
     );
   }
 }

@@ -3,7 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:login2/profile/profilescreen.dart';
 import 'package:login2/subtitle/uploadPage.dart';
+import 'package:login2/subtitle/url.dart';
 
+import '../Challeneges/Main_Page.dart';
 import '../mainfeature/upload.dart';
 import '../profile/editprofile.dart';
 
@@ -63,7 +65,7 @@ class _SubtitlePageState extends State<SubtitlePage>
         nextScreen = SubtitlePage();
         break;
       case 2:
-        nextScreen = ProfileScreen();
+        nextScreen = HomePage();
         break;
       case 3:
         nextScreen = ProfileScreen();
@@ -164,13 +166,20 @@ class _SubtitlePageState extends State<SubtitlePage>
                   context,
                   "assets/sub_url.jpg",
                   "Enter URL of video",
-                  onTap: () {},
+                  onTap: () {  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => Url(),
+                    ),
+                  );},
                 ),
                 _buildSubtitleCard(
                   context,
                   "assets/sub_history.jpg",
                   "Select from history",
-                  onTap: () {},
+                  onTap: () {
+                   
+                  },
                 ),
               ],
             ),

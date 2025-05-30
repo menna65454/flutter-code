@@ -70,7 +70,12 @@ class _PasswordManagerState extends State<PasswordManager> {
       await supabase.auth.updateUser(
         UserAttributes(password: _newPasswordController.text),
       );
-
+      await supabase.from('notifications').insert({
+  'user_id': user.id,
+  'title': 'Password Changed',
+  'body': 'Your password has been changed',
+});
+          
       // ✅ استدعاء الـ AlertDialog عند النجاح
       _showSuccessDialog();
     } on AuthException catch (error) {
@@ -81,6 +86,7 @@ class _PasswordManagerState extends State<PasswordManager> {
         });
       } else {
         _showSnackBar("Error: ${error.message}");
+        
       }
     } catch (error) {
       _showSnackBar("Error: ${error.toString()}");

@@ -5,9 +5,10 @@ plugins {
 }
 
 android {
-    compileSdkVersion 34
+    namespace  "com.example.login2"
 
-    namespace = "com.example.login2"
+    compileSdk = 34
+
     ndkVersion = flutter.ndkVersion
 
 
@@ -23,8 +24,7 @@ android {
     targetSdkVersion 34
     versionCode 1
     versionName "1.0"
-        applicationId = "com.example.login2"
-    
+
     }
     kotlinOptions {
         jvmTarget = "1.8"
